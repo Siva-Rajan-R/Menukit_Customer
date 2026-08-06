@@ -188,6 +188,20 @@ export function CustomerProfilePage() {
     verifyCashfreePayment();
   }, [customerPhone]);
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleBuyCredits = async () => {
     if (!customerPhone) {
       toast.error("Please log in to purchase contest credits");
@@ -199,11 +213,79 @@ export function CustomerProfilePage() {
         mobile_number: customerPhone,
         shop_id: id || 'global'
       });
-      if (res.data && res.data.link_url) {
-        toast.loading("Redirecting to Cashfree Payment (₹5 = 1 Credit)...");
-        window.location.href = res.data.link_url;
-      } else {
-        toast.error("Failed to generate payment link");
+      if (res.data) {
+        const payData = res.data;
+        if (payData.mock_mode) {
+          await api.post('/contests/verify-pay', {
+            razorpay_order_id: payData.order_id,
+            mobile_number: customerPhone
+          });
+          toast.success("1 Contest Credit added to your account!");
+          const profileRes = await api.get(`/public/shop/global/customer-profile`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (profileRes.data?.customer) {
+            setCustomerCredits({
+              creditLimit: profileRes.data.customer.credit_limit || 0,
+              availableCredit: profileRes.data.customer.available_credit || 0,
+              usedCredit: profileRes.data.customer.used_credit || 0
+            });
+          }
+          return;
+        }
+
+        const isLoaded = await loadRazorpayScript();
+        if (!isLoaded) {
+          toast.error("Razorpay SDK failed to load. Are you online?");
+          return;
+        }
+
+        const basePrice = payData.base_amount || 5.00;
+        const pgFee = payData.pg_fee || 0.15;
+        const gstFee = payData.gst_on_fee || 0.03;
+        const totalAmt = payData.final_total || 5.18;
+
+        const options = {
+          key: payData.key,
+          amount: payData.amount,
+          currency: payData.currency || "INR",
+          name: "Menukit - 1 Contest Credit",
+          description: `1 Credit: ₹${basePrice} | PG Fee (3%): ₹${pgFee} | GST (18%): ₹${gstFee} = ₹${totalAmt}`,
+          order_id: payData.order_id,
+          notes: {
+            "1_Contest_Credit": `₹${basePrice}`,
+            "2_Payment_Gateway_Fee_3pct": `₹${pgFee}`,
+            "3_GST_18pct": `₹${gstFee}`,
+            "4_Total_Payable": `₹${totalAmt}`
+          },
+          handler: async function (response: any) {
+            try {
+              await api.post('/contests/verify-pay', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                mobile_number: customerPhone,
+              });
+              toast.success("Payment successful! 1 Contest Credit added.");
+              const profileRes = await api.get(`/public/shop/global/customer-profile`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+              });
+              if (profileRes.data?.customer) {
+                setCustomerCredits({
+                  creditLimit: profileRes.data.customer.credit_limit || 0,
+                  availableCredit: profileRes.data.customer.available_credit || 0,
+                  usedCredit: profileRes.data.customer.used_credit || 0
+                });
+              }
+            } catch (error) {
+              toast.error("Payment verification failed");
+            }
+          },
+          theme: { color: primaryColor || "#ea580c" }
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
       }
     } catch (e: any) {
       toast.error(e.response?.data?.detail || "Failed to initiate credit payment");
@@ -832,7 +914,7 @@ export function CustomerProfilePage() {
                                 Order #{o.id.slice(0, 8)}
                               </span>
                               <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">
-                                +{Math.floor(o.total_amount / 5)} Credits
+                                {o.total_amount >= 100 ? '+0.15 Credits' : '0 Credits'}
                               </span>
                             </div>
                             <span className={`font-black uppercase tracking-wider px-2.5 py-1 rounded-lg text-[10px] ${
@@ -1083,7 +1165,7 @@ export function CustomerProfilePage() {
                   </span>
                 </div>
                 <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-950/60 px-2.5 py-1 rounded-xl">
-                  +{Math.floor(selectedOrder.total_amount / 5)} Credits
+                  {selectedOrder.total_amount >= 100 ? '+0.15 Credits' : '0 Credits'}
                 </span>
               </div>
 
@@ -1679,26 +1761,34 @@ export function CustomerProfilePage() {
 
                 <div className="grid grid-cols-1 gap-2 text-xs">
                   {/* Option 1: Direct Purchase */}
-                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-xs">
-                        <CreditCard size={18} />
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-xs">
+                          <CreditCard size={18} />
+                        </div>
+                        <div>
+                          <span className="font-black text-slate-900 dark:text-white text-xs block">Direct Purchase</span>
+                          <span className="text-slate-600 dark:text-slate-300 text-[11px] font-semibold">1 Contest Credit = ₹5.00</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-black text-slate-900 dark:text-white text-xs block">Direct Purchase</span>
-                        <span className="text-slate-600 dark:text-slate-300 text-[11px] font-semibold">₹5 = 1 Contest Credit via Cashfree</span>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setShowCreditBenefits(false);
+                          handleBuyCredits();
+                        }}
+                        disabled={isBuyingCredits}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 active:scale-95 text-white font-black text-xs transition-all cursor-pointer shadow-xs disabled:opacity-50 shrink-0"
+                      >
+                        Buy ₹5.18
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setShowCreditBenefits(false);
-                        handleBuyCredits();
-                      }}
-                      disabled={isBuyingCredits}
-                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 active:scale-95 text-white font-black text-xs transition-all cursor-pointer shadow-xs disabled:opacity-50 shrink-0"
-                    >
-                      Buy ₹5
-                    </button>
+
+                    <div className="pt-2 border-t border-amber-500/20 grid grid-cols-3 gap-1 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
+                      <div>Credit: <span className="font-bold text-slate-900 dark:text-white">₹5.00</span></div>
+                      <div>PG Fee (3%): <span className="font-bold text-slate-900 dark:text-white">₹0.15</span></div>
+                      <div>GST (18%): <span className="font-bold text-slate-900 dark:text-white">₹0.03</span></div>
+                    </div>
                   </div>
 
                   {/* Option 2: Place an Order */}
