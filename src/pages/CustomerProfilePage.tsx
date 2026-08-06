@@ -25,9 +25,10 @@ import { api } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CustomerAuthScreen } from '../components/CustomerAuthScreen';
+import { APP_CONFIG } from '../config';
 
 export function CustomerProfilePage() {
-  const STORE_APP_URL = import.meta.env.VITE_STORE_APP_URL || 'http://localhost:5173';
+  const STORE_APP_URL = APP_CONFIG.STORE_APP_URL;
   const { id } = useParams();
   const navigate = useNavigate();
   const [shop, setShop] = useState<any>(null);
