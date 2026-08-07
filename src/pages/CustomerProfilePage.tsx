@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
+
+const logoUrl = `${import.meta.env.BASE_URL}menukit-logo.svg`;
 import { motion, AnimatePresence } from 'framer-motion';
 import { CustomerAuthScreen } from '../components/CustomerAuthScreen';
 import { APP_CONFIG } from '../config';
@@ -555,7 +557,7 @@ export function CustomerProfilePage() {
           </button>
 
           <div className="flex items-center gap-2">
-            <img src="/menukit-logo.svg" alt="Menukit Logo" className="w-7 h-7 object-contain" />
+            <img src={logoUrl} alt="Menukit Logo" className="w-7 h-7 object-contain" />
             <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">Menukit</span>
           </div>
 

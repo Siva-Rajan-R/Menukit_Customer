@@ -295,7 +295,6 @@ export const DiscountUnlockPopup: React.FC<DiscountUnlockPopupProps> = ({ shopId
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">Verify OTP</h2>
                 <p className="text-sm text-gray-500">Code sent to {countryCode} {mobileNumber}</p>
-                <p className="text-xs text-amber-600 mt-1 font-medium bg-amber-50 p-1.5 rounded inline-block">Hint: Dev mode - use 123456</p>
               </div>
 
               <form onSubmit={handleOtpSubmit} className="space-y-5">

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, User, ChevronDown } from 'lucide-react';
 import { customerService } from '../services/customers';
+import { triggerHaptic, HAPTIC_PATTERNS } from '../utils/haptic';
+
+const logoUrl = `${import.meta.env.BASE_URL}menukit-logo.svg`;
 
 const COUNTRY_CODES = [
   { code: '+91', label: 'India (+91)' },
@@ -99,6 +102,8 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
       const fullPhone = `${countryCode}${mobileNumber}`;
       const res = await customerService.verifyOtp(fullPhone, otpCode, shopId);
       
+      triggerHaptic(HAPTIC_PATTERNS.successUnlock);
+      
       const token = res.access_token || localStorage.getItem('customer_token') || 'customer_token';
       const customerName = res.customer_name || localStorage.getItem('customer_name') || 'Customer';
       
@@ -114,7 +119,7 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
         onAuthenticated(token, customerName, fullPhone);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid OTP code. Try 123456 in dev mode.');
+      setError(err.response?.data?.detail || 'Invalid OTP code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -151,7 +156,7 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
       {/* Top Menukit Logo & Title */}
       <div className="mb-5 text-center">
         <div className="inline-flex items-center gap-2.5">
-          <img src="/menukit-logo.svg" alt="Menukit Logo" className="w-10 h-10 object-contain shrink-0" />
+          <img src={logoUrl} alt="Menukit Logo" className="w-10 h-10 object-contain shrink-0" />
           <div className="text-left">
             <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white block leading-none">
               Menukit
@@ -183,7 +188,7 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
               <div className="text-center space-y-1.5">
                 {/* Menukit Logo inside card */}
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 p-2 flex items-center justify-center mx-auto shadow-inner">
-                  <img src="/menukit-logo.svg" alt="Menukit Logo" className="w-full h-full object-contain" />
+                  <img src={logoUrl} alt="Menukit Logo" className="w-full h-full object-contain" />
                 </div>
                 <h1 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                   Customer Verification
@@ -240,7 +245,7 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
                       value={mobileNumber}
                       onChange={(e) => setMobileNumber(e.target.value.replace(/[^0-9]/g, ''))}
                       className="block w-full pl-20 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none text-sm font-bold text-slate-900 dark:text-white transition-all placeholder:font-normal placeholder:text-slate-400"
-                      placeholder="9876543210"
+                      placeholder="Enter mobile number"
                       maxLength={15}
                       autoFocus
                       required
@@ -279,9 +284,6 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Code sent to <strong className="text-slate-800 dark:text-slate-200">{countryCode} {mobileNumber}</strong>
                 </p>
-                <div className="inline-block bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-900/60 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
-                  Hint: Dev mode OTP is <strong>123456</strong>
-                </div>
               </div>
 
               <form onSubmit={handleOtpSubmit} className="space-y-3.5">
