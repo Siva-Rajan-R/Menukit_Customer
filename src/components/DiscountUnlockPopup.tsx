@@ -277,6 +277,13 @@ export const DiscountUnlockPopup: React.FC<DiscountUnlockPopupProps> = ({ shopId
                 >
                   {loading ? 'Sending OTP...' : 'Send OTP'}
                 </button>
+
+                <p className="text-xs text-center text-gray-500 mt-4">
+                  By continuing, you accept our{' '}
+                  <a href="https://menukit.debuggerstechnologies.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">
+                    Terms and Conditions
+                  </a>
+                </p>
               </form>
             </motion.div>
           )}

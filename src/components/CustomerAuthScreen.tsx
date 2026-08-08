@@ -259,8 +259,15 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
                   disabled={loading || mobileNumber.length < 10}
                   className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.99] text-white font-extrabold text-xs shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {loading ? 'Sending OTP...' : 'Send OTP Code'}
+                  {loading ? 'Sending OTP...' : 'Continue'}
                 </button>
+
+                <p className="text-[10px] text-center text-slate-500 mt-3">
+                  By continuing, you accept our{' '}
+                  <a href="https://menukit.debuggerstechnologies.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">
+                    Terms and Conditions
+                  </a>
+                </p>
               </form>
             </motion.div>
           )}
