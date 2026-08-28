@@ -32,6 +32,20 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
   const [error, setError] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [resendTimer, setResendTimer] = useState(30);
+  const [resendCount, setResendCount] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 'otp' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, resendTimer]);
 
   useEffect(() => {
     fetch('https://ipapi.co/json/')
@@ -122,6 +136,24 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
       setError(err.response?.data?.detail || 'Invalid OTP code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCount >= 2) return;
+    
+    setError('');
+    setIsResending(true);
+    try {
+      const fullPhone = `${countryCode}${mobileNumber}`;
+      await customerService.verifyMobile(fullPhone, shopId);
+      
+      setResendTimer(30);
+      setResendCount(prev => prev + 1);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to resend OTP. Please try again.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -311,15 +343,30 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({ shopId, 
                 <div className="space-y-2">
                   <button
                     type="submit"
-                    disabled={loading || otpCode.length !== 6}
+                    disabled={loading || isResending || otpCode.length !== 6}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-xs shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {loading ? 'Verifying...' : 'Verify & Continue'}
                   </button>
 
+                  {resendCount < 2 && (
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendTimer > 0 || loading || isResending}
+                      className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-[0.99] text-slate-700 dark:text-slate-300 font-extrabold text-xs shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isResending ? 'Sending...' : resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setStep('mobile')}
+                    onClick={() => {
+                      setStep('mobile');
+                      setResendTimer(30);
+                      setResendCount(0);
+                    }}
                     className="w-full py-1 text-[11px] font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                   >
                     Change Mobile Number
