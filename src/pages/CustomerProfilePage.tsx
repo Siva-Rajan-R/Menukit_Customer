@@ -952,7 +952,10 @@ export function CustomerProfilePage() {
                     </div>
 
                     <div className="space-y-3">
-                      {shopOrders.map((o) => (
+                      {shopOrders.map((o) => {
+                        const activeItems = (o.items || []).filter((it: any) => !it.is_cancelled);
+                        const cancelledCount = (o.items || []).filter((it: any) => it.is_cancelled).length;
+                        return (
                         <div 
                           key={o.id} 
                           onClick={() => setSelectedOrder(o)}
@@ -961,7 +964,7 @@ export function CustomerProfilePage() {
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-slate-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 font-bold transition-colors">
-                                Order #{o.id.slice(0, 8)}
+                                Order #{o.daily_order_number || o.id.slice(0, 8)}
                               </span>
                               <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">
                                 {o.total_amount >= 100 ? '+0.15 Credits' : '0 Credits'}
@@ -979,7 +982,7 @@ export function CustomerProfilePage() {
                           </div>
 
                           <div className="space-y-1.5 border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
-                            {o.items?.map((item: any, idx: number) => (
+                            {activeItems.map((item: any, idx: number) => (
                               <div key={idx} className="flex justify-between text-xs">
                                 <span className="font-medium text-slate-700 dark:text-slate-300">
                                   {item.quantity}x {item.name}
@@ -989,6 +992,12 @@ export function CustomerProfilePage() {
                                 </span>
                               </div>
                             ))}
+                            {cancelledCount > 0 && (
+                              <div className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 flex items-center gap-1 pt-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                <span>{cancelledCount} item{cancelledCount > 1 ? 's' : ''} cancelled</span>
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-bold">
@@ -1003,7 +1012,8 @@ export function CustomerProfilePage() {
                           </div>
 
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   </div>
                 ))
@@ -1191,7 +1201,7 @@ export function CustomerProfilePage() {
                     Order Details • {selectedOrder.shop_name || 'Store Network'}
                   </span>
                   <h3 className="font-mono font-black text-lg text-slate-900 dark:text-white">
-                    #{selectedOrder.id.slice(0, 8).toUpperCase()}
+                    #{selectedOrder.daily_order_number || selectedOrder.id.slice(0, 8).toUpperCase()}
                   </h3>
                 </div>
                 <button
@@ -1232,7 +1242,8 @@ export function CustomerProfilePage() {
               <div className="space-y-2">
                 <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Order Items</h4>
                 <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-2.5">
-                  {selectedOrder.items?.map((item: any, idx: number) => (
+                  {/* Active Items */}
+                  {(selectedOrder.items || []).filter((it: any) => !it.is_cancelled).map((item: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-slate-900 dark:text-white block">{item.name}</span>
@@ -1243,6 +1254,44 @@ export function CustomerProfilePage() {
                       </span>
                     </div>
                   ))}
+
+                  {/* Cancelled / Replaced Items Section */}
+                  {(() => {
+                    const cancelled = (selectedOrder.items || []).filter((it: any) => it.is_cancelled);
+                    if (cancelled.length === 0) return null;
+                    return (
+                      <div className="mt-2.5 pt-2.5 border-t border-dashed border-rose-200 dark:border-rose-900/50 space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 dark:text-rose-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          Cancelled / Replaced Items ({cancelled.length})
+                        </span>
+                        {cancelled.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center text-xs opacity-75">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500 line-through block">{item.name}</span>
+                                <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.2 rounded">
+                                  CANCELLED
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-mono line-through">
+                                Qty: {item.quantity} x ₹{item.price}
+                              </span>
+                              {item.cancellation_reason && (
+                                <span className="text-[10px] text-slate-400 block italic">{item.cancellation_reason}</span>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className="text-slate-400 line-through font-mono text-xs block">
+                                ₹{(item.price * item.quantity).toFixed(0)}
+                              </span>
+                              <span className="text-[10px] font-bold text-rose-500">Not Charged</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   <div className="border-t border-slate-200 dark:border-slate-800 pt-2.5 flex justify-between items-center font-black text-sm">
                     <span className="text-slate-700 dark:text-slate-300">Total Paid Amount</span>
